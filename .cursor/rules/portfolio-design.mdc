@@ -1,0 +1,23 @@
+---
+description: Design system aligné sur le portfolio (Outfit/Syne, tokens, dark/light)
+alwaysApply: true
+---
+
+# Design — Alignement Portfolio
+
+Avant toute UI, lire et appliquer `DESIGN.md` à la racine du projet.
+
+## Non négociable
+
+- Polices : **Outfit** (body) + **Syne** (display). Pas Inter / Roboto / system.
+- Tokens CSS `:root` / `.dark` exacts (voir `DESIGN.md`) — pas de thème violet ou crème terracotta.
+- Fond body = multi-glows radiaux soft (`--glow`, `--glow-cyan`, `--glow-teal`), pas aplat plat.
+- Dark par défaut (classe `.dark` sur `<html>`), light supporté, anti-FOUC via script + `localStorage` clé `theme`.
+- CTA = `background: var(--fg)` / `color: var(--bg)`, hover lift + glow soft. Pas de gros bouton bleu saturé.
+- Cards seulement pour interactions. Radius `lg`/`xl`/`1rem`. Conteneur centré ~11/12 → 8/12.
+- Motion : 2–3 max, respect `prefers-reduced-motion`.
+- Premier viewport Pomodoro : **nom + timer + 1 phrase + CTA** — pas de stats au-dessus.
+
+## Checklist rapide
+
+Outfit+Syne · tokens · fond glow · CTA inversé · dark/light · timer = héros
