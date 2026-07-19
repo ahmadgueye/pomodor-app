@@ -1,7 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import prayerCities from '../data/prayer-cities.json'
+import { PRAYER_METHODS } from '../lib/prayers'
 
 const EXIT_MS = 300
+const GEO_TIMEOUT_MS = 10_000
 
 function prefersReducedMotion() {
   try {
@@ -44,12 +47,50 @@ export default function SettingsDrawer({
   onToggleAutoStart,
   completeActiveOnFocusEnd,
   onToggleCompleteActive,
+  prayersEnabled,
+  onTogglePrayers,
+  prayerCityLabel,
+  prayerMethod,
+  onPrayerMethodChange,
+  onUseGeolocation,
+  onSelectPrayerCity,
 }) {
   const titleId = useId()
   const closeRef = useRef(null)
   const previouslyFocused = useRef(null)
   const [mounted, setMounted] = useState(open)
   const [closing, setClosing] = useState(false)
+  const [geoStatus, setGeoStatus] = useState('idle')
+  const [geoError, setGeoError] = useState('')
+
+  const selectedCityId =
+    prayerCities.find((city) => city.label === prayerCityLabel)?.id ?? ''
+
+  const handleUseLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoStatus('error')
+      setGeoError('Géolocalisation indisponible sur cet appareil.')
+      return
+    }
+
+    setGeoStatus('loading')
+    setGeoError('')
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        onUseGeolocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        })
+        setGeoStatus('ready')
+      },
+      () => {
+        setGeoStatus('error')
+        setGeoError('Impossible d’obtenir la position. Choisis une ville.')
+      },
+      { enableHighAccuracy: false, timeout: GEO_TIMEOUT_MS, maximumAge: 300_000 },
+    )
+  }
 
   useEffect(() => {
     if (prefersReducedMotion()) {
@@ -264,6 +305,98 @@ export default function SettingsDrawer({
             </div>
           </section>
 
+          <section className="drawer-section" aria-labelledby="settings-salah">
+            <h3 id="settings-salah" className="drawer-section-title">
+              Salah
+            </h3>
+            <div className="drawer-section-list">
+              <SettingToggle
+                id="setting-prayers"
+                label="Horaires de prière"
+                description="Prochaine prière dans le header"
+                checked={prayersEnabled}
+                onChange={onTogglePrayers}
+              />
+            </div>
+
+            {prayersEnabled ? (
+              <div className="drawer-salah-controls">
+                <button
+                  type="button"
+                  className="drawer-salah-btn"
+                  onClick={handleUseLocation}
+                  disabled={geoStatus === 'loading' || closing}
+                >
+                  {geoStatus === 'loading'
+                    ? 'Localisation…'
+                    : 'Utiliser ma position'}
+                </button>
+                {prayerCityLabel ? (
+                  <p className="drawer-salah-hint">
+                    Lieu : {prayerCityLabel}
+                  </p>
+                ) : (
+                  <p className="drawer-salah-hint">
+                    Active ta position ou choisis une ville pour afficher les
+                    horaires.
+                  </p>
+                )}
+                {geoError ? (
+                  <p className="drawer-salah-error" role="alert">
+                    {geoError}
+                  </p>
+                ) : null}
+
+                <label className="drawer-field" htmlFor="setting-prayer-city">
+                  <span className="drawer-field-label">Ville</span>
+                  <select
+                    id="setting-prayer-city"
+                    className="drawer-select"
+                    value={selectedCityId}
+                    onChange={(event) => {
+                      const city = prayerCities.find(
+                        (item) => item.id === event.target.value,
+                      )
+                      if (city) onSelectPrayerCity(city)
+                    }}
+                  >
+                    <option value="" disabled>
+                      Choisir une ville
+                    </option>
+                    {prayerCities.map((city) => (
+                      <option key={city.id} value={city.id}>
+                        {city.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="drawer-field" htmlFor="setting-prayer-method">
+                  <span className="drawer-field-label">Méthode de calcul</span>
+                  <select
+                    id="setting-prayer-method"
+                    className="drawer-select"
+                    value={prayerMethod}
+                    onChange={(event) =>
+                      onPrayerMethodChange(event.target.value)
+                    }
+                  >
+                    {PRAYER_METHODS.map((method) => (
+                      <option key={method.id} value={method.id}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : (
+              <p className="drawer-salah-hint">
+                Active les horaires pour voir la prochaine prière dans le
+                header — calcul local, rien ne quitte ton appareil.
+              </p>
+            )}
+          </section>
+
           <section className="drawer-section" aria-labelledby="settings-shortcuts">
             <h3 id="settings-shortcuts" className="drawer-section-title">
               Raccourcis
@@ -285,8 +418,9 @@ export default function SettingsDrawer({
               Confidentialité
             </h3>
             <p className="drawer-privacy">
-              Un Pomodoro calme et privé — une intention, un timer, rien
-              d&apos;autre. Rien ne quitte ton appareil.
+              takku — app de productivité pour les muslims. Le temps est une
+              bénédiction : passe-le avec intention. Calme, privé, sur ton
+              appareil. Rien ne quitte ton appareil.
             </p>
           </section>
         </div>

@@ -5,9 +5,14 @@ import QuoteRotator from './components/QuoteRotator'
 import TodoList from './components/TodoList'
 import DurationsInline from './components/DurationsInline'
 import SettingsDrawer from './components/SettingsDrawer'
+import PrayerTimesDropdown from './components/PrayerTimesDropdown'
 import Reveal from './components/Reveal'
 import { loadPanels, savePanels, resolvePanelVisibility } from './lib/panels'
 import { loadSettings, saveSettings } from './lib/settings'
+import {
+  getNextPrayer,
+  getPrayerTimes,
+} from './lib/prayers'
 import {
   CYCLE_SIZE,
   applyFocusComplete,
@@ -25,6 +30,7 @@ import { loadTodos, saveTodos, getActiveTodo } from './lib/todos'
 import { pickBreakRitual } from './lib/rituals'
 
 const DEFAULT_TITLE = 'takku — Pomodoro'
+const PRAYER_TICK_MS = 30_000
 
 function formatTime(time) {
   const minutes = Math.floor(time / 60).toString().padStart(2, '0')
@@ -42,27 +48,74 @@ function resolveTimerPhase(isBreakTime, isLongBreak) {
   return isLongBreak ? 'longBreak' : 'break'
 }
 
+function resolvePrayerSnapshot(coords, method, now = new Date()) {
+  if (!coords) return { times: null, next: null }
+
+  const todayTimes = getPrayerTimes(now, coords, method)
+  const nextToday = getNextPrayer(now, todayTimes)
+  if (nextToday) return { times: todayTimes, next: nextToday }
+
+  const tomorrow = new Date(now)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowTimes = getPrayerTimes(tomorrow, coords, method)
+  const nextTomorrow = getNextPrayer(
+    new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate()),
+    tomorrowTimes,
+  )
+
+  return {
+    times: todayTimes,
+    next: nextTomorrow ?? (tomorrowTimes?.Fajr
+      ? { name: 'Fajr', at: tomorrowTimes.Fajr }
+      : null),
+  }
+}
+
 function App() {
+  const initialSettingsRef = useRef(null)
+  if (initialSettingsRef.current === null) {
+    initialSettingsRef.current = loadSettings()
+  }
+  const initialSettings = initialSettingsRef.current
   const [breakLength, setBreakLength] = useState(
-    () => loadSettings().breakLength,
+    () => initialSettings.breakLength,
   )
   const [longBreakLength, setLongBreakLength] = useState(
-    () => loadSettings().longBreakLength,
+    () => initialSettings.longBreakLength,
   )
   const [sessionLength, setSessionLength] = useState(
-    () => loadSettings().sessionLength,
+    () => initialSettings.sessionLength,
   )
   const [soundEnabled, setSoundEnabled] = useState(
-    () => loadSettings().soundEnabled,
+    () => initialSettings.soundEnabled,
   )
   const [autoStartNext, setAutoStartNext] = useState(
-    () => loadSettings().autoStartNext,
+    () => initialSettings.autoStartNext,
   )
   const [completeActiveOnFocusEnd, setCompleteActiveOnFocusEnd] = useState(
-    () => loadSettings().completeActiveOnFocusEnd,
+    () => initialSettings.completeActiveOnFocusEnd,
+  )
+  const [prayersEnabled, setPrayersEnabled] = useState(
+    () => initialSettings.prayersEnabled,
+  )
+  const [prayerCoords, setPrayerCoords] = useState(
+    () => initialSettings.prayerCoords,
+  )
+  const [prayerCityLabel, setPrayerCityLabel] = useState(
+    () => initialSettings.prayerCityLabel,
+  )
+  const [prayerMethod, setPrayerMethod] = useState(
+    () => initialSettings.prayerMethod,
+  )
+  const [prayerNow, setPrayerNow] = useState(() => Date.now())
+  const [prayerSnapshot, setPrayerSnapshot] = useState(() =>
+    resolvePrayerSnapshot(
+      initialSettings.prayerCoords,
+      initialSettings.prayerMethod,
+    ),
   )
   const [timeleft, setTimeleft] = useState(
-    () => loadSettings().sessionLength * 60,
+    () => initialSettings.sessionLength * 60,
   )
   const [isPlaying, setIsPlaying] = useState(false)
   const [isBreakTime, setIsBreakTime] = useState(false)
@@ -145,6 +198,10 @@ function App() {
       soundEnabled,
       autoStartNext,
       completeActiveOnFocusEnd,
+      prayersEnabled,
+      prayerCoords,
+      prayerCityLabel,
+      prayerMethod,
     })
   }, [
     sessionLength,
@@ -153,7 +210,30 @@ function App() {
     soundEnabled,
     autoStartNext,
     completeActiveOnFocusEnd,
+    prayersEnabled,
+    prayerCoords,
+    prayerCityLabel,
+    prayerMethod,
   ])
+
+  useEffect(() => {
+    if (!prayersEnabled || !prayerCoords) {
+      setPrayerSnapshot({ times: null, next: null })
+      return undefined
+    }
+
+    const refresh = () => {
+      const now = Date.now()
+      setPrayerNow(now)
+      setPrayerSnapshot(
+        resolvePrayerSnapshot(prayerCoords, prayerMethod, new Date(now)),
+      )
+    }
+
+    refresh()
+    const id = window.setInterval(refresh, PRAYER_TICK_MS)
+    return () => window.clearInterval(id)
+  }, [prayersEnabled, prayerCoords, prayerMethod])
 
   useEffect(() => {
     saveTodos(todoState)
@@ -360,8 +440,14 @@ function App() {
     setPanels((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const toggleZenMode = () => {
-    setPanels((prev) => ({ ...prev, zenMode: !prev.zenMode }))
+  const handleUseGeolocation = (coords) => {
+    setPrayerCoords(coords)
+    setPrayerCityLabel('Ma position')
+  }
+
+  const handleSelectPrayerCity = (city) => {
+    setPrayerCoords({ lat: city.lat, lng: city.lng })
+    setPrayerCityLabel(city.label)
   }
 
   const playTimer = () => {
@@ -491,20 +577,13 @@ function App() {
       <header className="app-header">
         <h1 className="brand">takku</h1>
         <div className="header-actions">
-          <button
-            type="button"
-            className={`zen-btn${panels.zenMode ? ' is-on' : ''}`}
-            onClick={toggleZenMode}
-            aria-pressed={panels.zenMode}
-            aria-label={
-              panels.zenMode ? 'Quitter le mode zen' : 'Activer le mode zen'
-            }
-            title={
-              panels.zenMode ? 'Quitter le mode zen' : 'Mode zen'
-            }
-          >
-            Zen
-          </button>
+          {prayersEnabled && prayerCoords ? (
+            <PrayerTimesDropdown
+              times={prayerSnapshot.times}
+              next={prayerSnapshot.next}
+              now={prayerNow}
+            />
+          ) : null}
           <button
             type="button"
             className="icon-btn"
@@ -717,6 +796,13 @@ function App() {
         onToggleCompleteActive={() =>
           setCompleteActiveOnFocusEnd((prev) => !prev)
         }
+        prayersEnabled={prayersEnabled}
+        onTogglePrayers={() => setPrayersEnabled((prev) => !prev)}
+        prayerCityLabel={prayerCityLabel}
+        prayerMethod={prayerMethod}
+        onPrayerMethodChange={setPrayerMethod}
+        onUseGeolocation={handleUseGeolocation}
+        onSelectPrayerCity={handleSelectPrayerCity}
       />
     </div>
   )
