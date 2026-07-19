@@ -31,6 +31,11 @@ function modeTitle(isBreak, isLong) {
   return isLong ? 'Long break' : 'Break'
 }
 
+function resolveTimerPhase(isBreakTime, isLongBreak) {
+  if (!isBreakTime) return 'focus'
+  return isLongBreak ? 'longBreak' : 'break'
+}
+
 function App() {
   const [breakLength, setBreakLength] = useState(
     () => loadSettings().breakLength,
@@ -358,6 +363,7 @@ function App() {
   }
 
   const modeLabel = modeTitle(isBreakTime, isLongBreak)
+  const timerPhase = resolveTimerPhase(isBreakTime, isLongBreak)
   const sessionLabel =
     stats.completedFocus === 1
       ? '1 session'
@@ -490,7 +496,10 @@ function App() {
 
       <section className="hero">
         <Reveal show={visible.showQuotes} className="reveal-quote">
-          <QuoteRotator />
+          <QuoteRotator
+            timerPhase={timerPhase}
+            showRituals={panels.showRituals}
+          />
         </Reveal>
 
         <div className="timer-card" id="timer">

@@ -3,6 +3,7 @@ const STORAGE_KEY = 'takku-panels'
 export const DEFAULT_PANELS = {
   showTodos: true,
   showQuotes: true,
+  showRituals: true,
   showStats: true,
   zenMode: false,
   autoZen: true,
@@ -21,6 +22,7 @@ export function loadPanels() {
     return {
       showTodos: asBoolean(parsed.showTodos, DEFAULT_PANELS.showTodos),
       showQuotes: asBoolean(parsed.showQuotes, DEFAULT_PANELS.showQuotes),
+      showRituals: asBoolean(parsed.showRituals, DEFAULT_PANELS.showRituals),
       showStats: asBoolean(parsed.showStats, DEFAULT_PANELS.showStats),
       zenMode: asBoolean(parsed.zenMode, DEFAULT_PANELS.zenMode),
       autoZen: asBoolean(parsed.autoZen, DEFAULT_PANELS.autoZen),
@@ -41,6 +43,7 @@ export function savePanels(panels) {
       JSON.stringify({
         showTodos: Boolean(panels.showTodos),
         showQuotes: Boolean(panels.showQuotes),
+        showRituals: Boolean(panels.showRituals),
         showStats: Boolean(panels.showStats),
         zenMode: Boolean(panels.zenMode),
         autoZen: Boolean(panels.autoZen),

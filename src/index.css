@@ -262,8 +262,14 @@ button:focus-visible {
   margin: 0 0 2rem;
   min-height: 4.5rem;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.65rem;
+}
+
+.quote-rotator.is-break {
+  min-height: 5.75rem;
 }
 
 .hero-tagline,
@@ -300,6 +306,38 @@ button:focus-visible {
 
 .quote-author::before {
   content: "— ";
+}
+
+.quote-ritual {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--fg);
+  opacity: 0.72;
+}
+
+.quote-ritual-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.9;
+}
+
+.quote-ritual-sep {
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+.quote-ritual-text {
+  color: var(--fg);
 }
 
 .quote-in {

@@ -182,6 +182,13 @@ export default function SettingsDrawer({
                 onChange={() => onTogglePanel('showQuotes')}
               />
               <SettingToggle
+                id="setting-rituals"
+                label="Rituels de pause"
+                description="Suggestion discrète pendant les pauses"
+                checked={panels.showRituals}
+                onChange={() => onTogglePanel('showRituals')}
+              />
+              <SettingToggle
                 id="setting-stats"
                 label="Progression"
                 description="Points de cycle et totaux"
