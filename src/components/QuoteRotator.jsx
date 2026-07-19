@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import quotes from '../data/quotes.json'
-import rituals from '../data/rituals.json'
 
 const DISPLAY_MS = 5500
 const FADE_MS = 400
@@ -13,31 +12,19 @@ function matchesPhase(entry, timerPhase) {
   return phases.includes(timerPhase)
 }
 
-function pickIndex(length) {
-  if (length <= 0) return 0
-  return Math.floor(Math.random() * length)
-}
-
-function QuoteRotator({ timerPhase = 'focus', showRituals = true }) {
+function QuoteRotator({ timerPhase = 'focus' }) {
   const pool = useMemo(
     () => quotes.filter((quote) => matchesPhase(quote, timerPhase)),
     [timerPhase],
   )
-  const ritualPool = useMemo(
-    () => rituals.filter((ritual) => matchesPhase(ritual, timerPhase)),
-    [timerPhase],
-  )
 
-  const isBreak = timerPhase === 'break' || timerPhase === 'longBreak'
   const [index, setIndex] = useState(0)
-  const [ritualIndex, setRitualIndex] = useState(0)
   const [phase, setPhase] = useState('in')
 
   useEffect(() => {
     setIndex(0)
-    setRitualIndex(pickIndex(ritualPool.length))
     setPhase('in')
-  }, [timerPhase, ritualPool.length])
+  }, [timerPhase])
 
   useEffect(() => {
     if (!pool.length) return undefined
@@ -75,36 +62,21 @@ function QuoteRotator({ timerPhase = 'focus', showRituals = true }) {
   }, [pool])
 
   const quote = pool[index % Math.max(pool.length, 1)]
-  const ritual =
-    isBreak && showRituals && ritualPool.length
-      ? ritualPool[ritualIndex % ritualPool.length]
-      : null
 
-  if (!quote && !ritual) return null
+  if (!quote) return null
 
   return (
     <div
-      className={`quote-rotator${isBreak ? ' is-break' : ''}`}
+      className="quote-rotator"
       aria-live="polite"
       data-phase={timerPhase}
     >
-      {quote ? (
-        <p className={`hero-tagline quote-text quote-${phase}`}>
-          <span className="quote-body">« {quote.text} »</span>
-          {quote.author ? (
-            <cite className="quote-author">{quote.author}</cite>
-          ) : null}
-        </p>
-      ) : null}
-      {ritual ? (
-        <p className="quote-ritual">
-          <span className="quote-ritual-label">Pause</span>
-          <span className="quote-ritual-sep" aria-hidden="true">
-            ·
-          </span>
-          <span className="quote-ritual-text">{ritual.text}</span>
-        </p>
-      ) : null}
+      <p className={`hero-tagline quote-text quote-${phase}`}>
+        <span className="quote-body">« {quote.text} »</span>
+        {quote.author ? (
+          <cite className="quote-author">{quote.author}</cite>
+        ) : null}
+      </p>
     </div>
   )
 }

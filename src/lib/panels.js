@@ -66,7 +66,7 @@ export function resolvePanelVisibility(panels, { isPlaying, suppressZen = false 
       ? Boolean(panels.zenShowQuotes)
       : Boolean(panels.showQuotes),
     showTodos: !zenActive && Boolean(panels.showTodos),
-    showStats: !zenActive && Boolean(panels.showStats),
+    showStats: Boolean(panels.showStats),
     showDurations: !zenActive,
   }
 }

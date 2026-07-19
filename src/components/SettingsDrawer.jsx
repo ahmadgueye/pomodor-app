@@ -184,7 +184,7 @@ export default function SettingsDrawer({
               <SettingToggle
                 id="setting-rituals"
                 label="Rituels de pause"
-                description="Suggestion discrète pendant les pauses"
+                description="Suggestion à côté du label Break"
                 checked={panels.showRituals}
                 onChange={() => onTogglePanel('showRituals')}
               />
@@ -206,7 +206,7 @@ export default function SettingsDrawer({
               <SettingToggle
                 id="setting-zen"
                 label="Zen"
-                description="Cache tâches, progression et durées"
+                description="Cache tâches et durées"
                 checked={panels.zenMode}
                 onChange={() => onTogglePanel('zenMode')}
               />
@@ -257,11 +257,37 @@ export default function SettingsDrawer({
               <SettingToggle
                 id="setting-sound"
                 label="Son de fin"
-                description="Beep à la fin d’une phase"
+                description="Beep discret à la fin d’une phase"
                 checked={soundEnabled}
                 onChange={onToggleSound}
               />
             </div>
+          </section>
+
+          <section className="drawer-section" aria-labelledby="settings-shortcuts">
+            <h3 id="settings-shortcuts" className="drawer-section-title">
+              Raccourcis
+            </h3>
+            <ul className="drawer-shortcuts" aria-label="Raccourcis clavier">
+              <li>
+                <kbd>Espace</kbd>
+                <span>Démarrer / pause</span>
+              </li>
+              <li>
+                <kbd>R</kbd>
+                <span>Réinitialiser</span>
+              </li>
+            </ul>
+          </section>
+
+          <section className="drawer-section" aria-labelledby="settings-privacy">
+            <h3 id="settings-privacy" className="drawer-section-title">
+              Confidentialité
+            </h3>
+            <p className="drawer-privacy">
+              Un Pomodoro calme et privé — une intention, un timer, rien
+              d&apos;autre. Rien ne quitte ton appareil.
+            </p>
           </section>
         </div>
       </aside>

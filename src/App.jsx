@@ -10,13 +10,19 @@ import { loadPanels, savePanels, resolvePanelVisibility } from './lib/panels'
 import { loadSettings, saveSettings } from './lib/settings'
 import {
   CYCLE_SIZE,
+  applyFocusComplete,
+  formatCycleHint,
   formatFocusTotal,
+  formatSessionCount,
+  formatStreakLabel,
   isLongBreakCycle,
   loadStats,
   nextCycleFilled,
+  resolveStreakDays,
   saveStats,
 } from './lib/stats'
 import { loadTodos, saveTodos, getActiveTodo } from './lib/todos'
+import { pickBreakRitual } from './lib/rituals'
 
 const DEFAULT_TITLE = 'takku — Pomodoro'
 
@@ -68,6 +74,7 @@ function App() {
   const [panels, setPanels] = useState(() => loadPanels())
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [suppressZen, setSuppressZen] = useState(false)
+  const [breakRitual, setBreakRitual] = useState(null)
   const [theme, setTheme] = useState(() => {
     try {
       const stored = localStorage.getItem('theme')
@@ -161,6 +168,14 @@ function App() {
   }, [activeId, isPlaying])
 
   useEffect(() => {
+    if (!isBreakTime || !panels.showRituals) {
+      setBreakRitual(null)
+      return
+    }
+    setBreakRitual(pickBreakRitual(resolveTimerPhase(true, isLongBreak)))
+  }, [isBreakTime, isLongBreak, panels.showRituals])
+
+  useEffect(() => {
     if (!isPlayingRef.current) {
       const next = sessionLength * 60
       timeleftRef.current = next
@@ -196,6 +211,39 @@ function App() {
     }
   }, [])
 
+  const playTimerRef = useRef(() => {})
+  const resetTimerRef = useRef(() => {})
+
+  useEffect(() => {
+    const isTypingTarget = (target) => {
+      if (!(target instanceof HTMLElement)) return false
+      if (target.isContentEditable) return true
+      const tag = target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+      return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'))
+    }
+
+    const onKeyDown = (event) => {
+      if (settingsOpen) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (isTypingTarget(event.target)) return
+
+      if (event.key === ' ' || event.code === 'Space') {
+        event.preventDefault()
+        playTimerRef.current()
+        return
+      }
+
+      if (event.key === 'r' || event.key === 'R') {
+        event.preventDefault()
+        resetTimerRef.current()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [settingsOpen])
+
   const remainingFromDeadline = () => {
     if (!deadlineRef.current) return timeleftRef.current
     return Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000))
@@ -220,11 +268,7 @@ function App() {
 
   const recordFocusComplete = (focusSeconds, cycleFilled) => {
     setStats((prev) => {
-      const next = {
-        completedFocus: prev.completedFocus + 1,
-        totalFocusSeconds: prev.totalFocusSeconds + focusSeconds,
-        cycleFilled,
-      }
+      const next = applyFocusComplete(prev, focusSeconds, cycleFilled)
       saveStats(next)
       return next
     })
@@ -362,12 +406,14 @@ function App() {
     }
   }
 
+  playTimerRef.current = playTimer
+  resetTimerRef.current = resetTimer
+
   const modeLabel = modeTitle(isBreakTime, isLongBreak)
   const timerPhase = resolveTimerPhase(isBreakTime, isLongBreak)
-  const sessionLabel =
-    stats.completedFocus === 1
-      ? '1 session'
-      : `${stats.completedFocus} sessions`
+  const streakDays = resolveStreakDays(stats)
+  const streakLabel = formatStreakLabel(streakDays)
+  const cycleHint = formatCycleHint(stats.cycleFilled)
   const activeTodo = getActiveTodo(todos, activeId)
 
   const setTodos = (nextItems) => {
@@ -400,7 +446,7 @@ function App() {
 
   const statusContent = (() => {
     if (isBreakTime) {
-      return { kind: 'static', mode: modeLabel, intention: null }
+      return { kind: 'static', mode: modeLabel, intention: breakRitual }
     }
     if (activeTodo) {
       return { kind: 'static', mode: 'Focus', intention: activeTodo.text }
@@ -496,10 +542,7 @@ function App() {
 
       <section className="hero">
         <Reveal show={visible.showQuotes} className="reveal-quote">
-          <QuoteRotator
-            timerPhase={timerPhase}
-            showRituals={panels.showRituals}
-          />
+          <QuoteRotator timerPhase={timerPhase} />
         </Reveal>
 
         <div className="timer-card" id="timer">
@@ -543,6 +586,8 @@ function App() {
             id="start_stop"
             onClick={playTimer}
             aria-label={isPlaying ? 'Mettre en pause' : 'Démarrer'}
+            aria-keyshortcuts="Space"
+            title={isPlaying ? 'Pause (Espace)' : 'Start (Espace)'}
           >
             {isPlaying ? (
               <>
@@ -578,6 +623,8 @@ function App() {
             id="reset"
             onClick={resetTimer}
             aria-label="Réinitialiser"
+            aria-keyshortcuts="R"
+            title="Réinitialiser (R)"
           >
             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <path
@@ -591,32 +638,47 @@ function App() {
           </button>
         </div>
 
-        <Reveal show={visible.showStats} className="reveal-stats">
-          <div className="session-progress">
-            <div
-              id="sessions"
-              className="session-dots"
-              role="img"
-              aria-label={`Cycle : ${stats.cycleFilled} sur ${CYCLE_SIZE}`}
-            >
-              {Array.from({ length: CYCLE_SIZE }, (_, i) => (
-                <span
-                  key={i}
-                  className={`session-dot${i < stats.cycleFilled ? ' is-filled' : ''}`}
-                />
-              ))}
-            </div>
-
-            <p className="flow-stats">
-              {sessionLabel}
-              <span className="flow-stats-sep" aria-hidden="true">
-                ·
-              </span>
-              {formatFocusTotal(stats.totalFocusSeconds)} de focus
-            </p>
-          </div>
-        </Reveal>
       </section>
+
+      <Reveal show={visible.showStats} className="reveal-stats">
+        <div className="session-progress">
+          <div
+            id="sessions"
+            className="session-dots"
+            role="img"
+            aria-label={`Cycle : ${stats.cycleFilled} sur ${CYCLE_SIZE}`}
+          >
+            {Array.from({ length: CYCLE_SIZE }, (_, i) => (
+              <span
+                key={i}
+                className={`session-dot${i < stats.cycleFilled ? ' is-filled' : ''}`}
+              />
+            ))}
+          </div>
+
+          <p className="cycle-hint">{cycleHint}</p>
+
+          <p className="flow-stats">
+            Aujourd&apos;hui
+            <span className="flow-stats-sep" aria-hidden="true">
+              ·
+            </span>
+            {formatSessionCount(stats.todayCompletedFocus)}
+            <span className="flow-stats-sep" aria-hidden="true">
+              ·
+            </span>
+            {formatFocusTotal(stats.todayFocusSeconds)}
+            {streakLabel ? (
+              <>
+                <span className="flow-stats-sep" aria-hidden="true">
+                  ·
+                </span>
+                <span className="flow-streak">{streakLabel}</span>
+              </>
+            ) : null}
+          </p>
+        </div>
+      </Reveal>
 
       <Reveal show={visible.showTodos} className="reveal-todos">
         <TodoList
@@ -628,8 +690,8 @@ function App() {
       </Reveal>
 
       <footer className="app-footer">
-        <p>
-          Made for you 🚀 · © {new Date().getFullYear()}{' '}
+        <p className="footer-credit">
+          Made for you 🚀 © {new Date().getFullYear()}{' '}
           <a
             href="https://akhmad.ninja"
             target="_blank"

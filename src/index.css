@@ -265,11 +265,6 @@ button:focus-visible {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.65rem;
-}
-
-.quote-rotator.is-break {
-  min-height: 5.75rem;
 }
 
 .hero-tagline,
@@ -306,38 +301,6 @@ button:focus-visible {
 
 .quote-author::before {
   content: "— ";
-}
-
-.quote-ritual {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  font-family: var(--font-body);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: var(--fg);
-  opacity: 0.72;
-}
-
-.quote-ritual-label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  opacity: 0.9;
-}
-
-.quote-ritual-sep {
-  color: var(--muted);
-  opacity: 0.55;
-}
-
-.quote-ritual-text {
-  color: var(--fg);
 }
 
 .quote-in {
@@ -630,6 +593,23 @@ button:focus-visible {
   letter-spacing: 0.01em;
 }
 
+.footer-tagline {
+  max-width: 28rem;
+  margin-inline: auto;
+  line-height: 1.5;
+}
+
+.footer-privacy {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.footer-credit {
+  margin-top: 0.85rem;
+  font-size: 0.75rem;
+}
+
 .app-footer a {
   color: inherit;
   text-decoration: underline;
@@ -643,6 +623,57 @@ button:focus-visible {
 
 .session-progress {
   margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.session-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0;
+}
+
+.session-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.session-dot.is-filled {
+  background: var(--available);
+  border-color: var(--available);
+}
+
+.cycle-hint {
+  margin: 0.75rem 0 0;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+  color: var(--fg);
+}
+
+.flow-stats {
+  margin: 0.5rem 0 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.flow-stats-sep {
+  margin: 0 0.4rem;
+}
+
+.flow-streak {
+  color: var(--muted);
 }
 
 /* —— Todos —— */
@@ -938,41 +969,6 @@ button:focus-visible {
   border: 0;
 }
 
-.session-dots {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0;
-}
-
-.session-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: transparent;
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.session-dot.is-filled {
-  background: var(--available);
-  border-color: var(--available);
-}
-
-.flow-stats {
-  margin: 1rem 0 0;
-  text-align: center;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.flow-stats-sep {
-  margin: 0 0.4rem;
-}
-
 /* —— Settings drawer —— */
 .drawer-root {
   position: fixed;
@@ -1113,6 +1109,47 @@ button:focus-visible {
   font-size: 0.75rem;
   color: var(--muted);
   line-height: 1.4;
+}
+
+.drawer-shortcuts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.drawer-shortcuts li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.drawer-shortcuts kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: var(--surface);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.drawer-privacy {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--muted);
 }
 
 .setting-switch {
