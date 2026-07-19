@@ -1,0 +1,38 @@
+[
+  {
+    "text": "Regarde au loin 20 s",
+    "phases": ["break", "longBreak"]
+  },
+  {
+    "text": "Bois de l'eau",
+    "phases": ["break", "longBreak"]
+  },
+  {
+    "text": "Relâche les épaules",
+    "phases": ["break", "longBreak"]
+  },
+  {
+    "text": "Respire profondément trois fois",
+    "phases": ["break", "longBreak"]
+  },
+  {
+    "text": "Étire le cou doucement",
+    "phases": ["break"]
+  },
+  {
+    "text": "Détends la mâchoire",
+    "phases": ["break"]
+  },
+  {
+    "text": "Debout une minute, sans écran",
+    "phases": ["longBreak"]
+  },
+  {
+    "text": "Marche un peu, sans téléphone",
+    "phases": ["longBreak"]
+  },
+  {
+    "text": "Ouvre une fenêtre, prends l'air",
+    "phases": ["longBreak"]
+  }
+]

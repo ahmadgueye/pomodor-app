@@ -1,5 +1,15 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+
+const EXIT_MS = 300
+
+function prefersReducedMotion() {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
+}
 
 function SettingToggle({ id, label, description, checked, onChange }) {
   return (
@@ -32,13 +42,40 @@ export default function SettingsDrawer({
   onToggleSound,
   autoStartNext,
   onToggleAutoStart,
+  completeActiveOnFocusEnd,
+  onToggleCompleteActive,
 }) {
   const titleId = useId()
   const closeRef = useRef(null)
   const previouslyFocused = useRef(null)
+  const [mounted, setMounted] = useState(open)
+  const [closing, setClosing] = useState(false)
 
   useEffect(() => {
-    if (!open) return undefined
+    if (prefersReducedMotion()) {
+      setMounted(open)
+      setClosing(false)
+      return undefined
+    }
+
+    if (open) {
+      setMounted(true)
+      setClosing(false)
+      return undefined
+    }
+
+    if (!mounted) return undefined
+
+    setClosing(true)
+    const timer = window.setTimeout(() => {
+      setMounted(false)
+      setClosing(false)
+    }, EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [open, mounted])
+
+  useEffect(() => {
+    if (!mounted) return undefined
 
     previouslyFocused.current = document.activeElement
     const prevOverflow = document.body.style.overflow
@@ -68,23 +105,25 @@ export default function SettingsDrawer({
         previouslyFocused.current.focus()
       }
     }
-  }, [open, onClose])
+  }, [mounted, onClose])
 
-  if (!open) return null
+  if (!mounted) return null
 
   return createPortal(
-    <div className="drawer-root">
+    <div className={`drawer-root${closing ? ' is-closing' : ''}`}>
       <button
         type="button"
         className="drawer-backdrop"
         aria-label="Fermer les réglages"
-        onClick={onClose}
+        onClick={closing ? undefined : onClose}
+        tabIndex={closing ? -1 : undefined}
       />
       <aside
         className="settings-drawer"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-hidden={closing || undefined}
       >
         <div className="drawer-header">
           <h2 id={titleId} className="drawer-title">
@@ -96,6 +135,7 @@ export default function SettingsDrawer({
             className="drawer-close"
             aria-label="Fermer"
             onClick={onClose}
+            disabled={closing}
           >
             <svg
               aria-hidden="true"
@@ -142,11 +182,47 @@ export default function SettingsDrawer({
                 onChange={() => onTogglePanel('showQuotes')}
               />
               <SettingToggle
+                id="setting-rituals"
+                label="Rituels de pause"
+                description="Suggestion à côté du label Break"
+                checked={panels.showRituals}
+                onChange={() => onTogglePanel('showRituals')}
+              />
+              <SettingToggle
                 id="setting-stats"
                 label="Progression"
                 description="Points de cycle et totaux"
                 checked={panels.showStats}
                 onChange={() => onTogglePanel('showStats')}
+              />
+            </div>
+          </section>
+
+          <section className="drawer-section" aria-labelledby="settings-zen">
+            <h3 id="settings-zen" className="drawer-section-title">
+              Mode zen
+            </h3>
+            <div className="drawer-section-list">
+              <SettingToggle
+                id="setting-zen"
+                label="Zen"
+                description="Cache tâches et durées"
+                checked={panels.zenMode}
+                onChange={() => onTogglePanel('zenMode')}
+              />
+              <SettingToggle
+                id="setting-auto-zen"
+                label="Zen auto"
+                description="Masque le superflu pendant le timer"
+                checked={panels.autoZen}
+                onChange={() => onTogglePanel('autoZen')}
+              />
+              <SettingToggle
+                id="setting-zen-quotes"
+                label="Citations en zen"
+                description="Garde la phrase au-dessus du timer"
+                checked={panels.zenShowQuotes}
+                onChange={() => onTogglePanel('zenShowQuotes')}
               />
             </div>
           </section>
@@ -163,6 +239,13 @@ export default function SettingsDrawer({
                 checked={autoStartNext}
                 onChange={onToggleAutoStart}
               />
+              <SettingToggle
+                id="setting-complete-active"
+                label="Terminer l’intention"
+                description="Marque la tâche active comme faite en fin de focus"
+                checked={completeActiveOnFocusEnd}
+                onChange={onToggleCompleteActive}
+              />
             </div>
           </section>
 
@@ -174,11 +257,37 @@ export default function SettingsDrawer({
               <SettingToggle
                 id="setting-sound"
                 label="Son de fin"
-                description="Beep à la fin d’une phase"
+                description="Beep discret à la fin d’une phase"
                 checked={soundEnabled}
                 onChange={onToggleSound}
               />
             </div>
+          </section>
+
+          <section className="drawer-section" aria-labelledby="settings-shortcuts">
+            <h3 id="settings-shortcuts" className="drawer-section-title">
+              Raccourcis
+            </h3>
+            <ul className="drawer-shortcuts" aria-label="Raccourcis clavier">
+              <li>
+                <kbd>Espace</kbd>
+                <span>Démarrer / pause</span>
+              </li>
+              <li>
+                <kbd>R</kbd>
+                <span>Réinitialiser</span>
+              </li>
+            </ul>
+          </section>
+
+          <section className="drawer-section" aria-labelledby="settings-privacy">
+            <h3 id="settings-privacy" className="drawer-section-title">
+              Confidentialité
+            </h3>
+            <p className="drawer-privacy">
+              Un Pomodoro calme et privé — une intention, un timer, rien
+              d&apos;autre. Rien ne quitte ton appareil.
+            </p>
           </section>
         </div>
       </aside>

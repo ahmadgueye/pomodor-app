@@ -5,17 +5,24 @@ import QuoteRotator from './components/QuoteRotator'
 import TodoList from './components/TodoList'
 import DurationsInline from './components/DurationsInline'
 import SettingsDrawer from './components/SettingsDrawer'
-import { loadPanels, savePanels } from './lib/panels'
+import Reveal from './components/Reveal'
+import { loadPanels, savePanels, resolvePanelVisibility } from './lib/panels'
 import { loadSettings, saveSettings } from './lib/settings'
 import {
   CYCLE_SIZE,
+  applyFocusComplete,
+  formatCycleHint,
   formatFocusTotal,
+  formatSessionCount,
+  formatStreakLabel,
   isLongBreakCycle,
   loadStats,
   nextCycleFilled,
+  resolveStreakDays,
   saveStats,
 } from './lib/stats'
-import { loadTodos, saveTodos } from './lib/todos'
+import { loadTodos, saveTodos, getActiveTodo } from './lib/todos'
+import { pickBreakRitual } from './lib/rituals'
 
 const DEFAULT_TITLE = 'takku — Pomodoro'
 
@@ -28,6 +35,11 @@ function formatTime(time) {
 function modeTitle(isBreak, isLong) {
   if (!isBreak) return 'Focus'
   return isLong ? 'Long break' : 'Break'
+}
+
+function resolveTimerPhase(isBreakTime, isLongBreak) {
+  if (!isBreakTime) return 'focus'
+  return isLongBreak ? 'longBreak' : 'break'
 }
 
 function App() {
@@ -46,6 +58,9 @@ function App() {
   const [autoStartNext, setAutoStartNext] = useState(
     () => loadSettings().autoStartNext,
   )
+  const [completeActiveOnFocusEnd, setCompleteActiveOnFocusEnd] = useState(
+    () => loadSettings().completeActiveOnFocusEnd,
+  )
   const [timeleft, setTimeleft] = useState(
     () => loadSettings().sessionLength * 60,
   )
@@ -53,9 +68,13 @@ function App() {
   const [isBreakTime, setIsBreakTime] = useState(false)
   const [isLongBreak, setIsLongBreak] = useState(false)
   const [stats, setStats] = useState(() => loadStats())
-  const [todos, setTodos] = useState(() => loadTodos())
+  const [todoState, setTodoState] = useState(() => loadTodos())
+  const todos = todoState.items
+  const activeId = todoState.activeId
   const [panels, setPanels] = useState(() => loadPanels())
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [suppressZen, setSuppressZen] = useState(false)
+  const [breakRitual, setBreakRitual] = useState(null)
   const [theme, setTheme] = useState(() => {
     try {
       const stored = localStorage.getItem('theme')
@@ -79,6 +98,8 @@ function App() {
   const phaseSecondsRef = useRef(sessionLength * 60)
   const soundEnabledRef = useRef(soundEnabled)
   const autoStartNextRef = useRef(autoStartNext)
+  const completeActiveOnFocusEndRef = useRef(completeActiveOnFocusEnd)
+  const activeIdRef = useRef(activeId)
 
   useEffect(() => {
     timeleftRef.current = timeleft
@@ -109,12 +130,21 @@ function App() {
   }, [autoStartNext])
 
   useEffect(() => {
+    completeActiveOnFocusEndRef.current = completeActiveOnFocusEnd
+  }, [completeActiveOnFocusEnd])
+
+  useEffect(() => {
+    activeIdRef.current = activeId
+  }, [activeId])
+
+  useEffect(() => {
     saveSettings({
       sessionLength,
       breakLength,
       longBreakLength,
       soundEnabled,
       autoStartNext,
+      completeActiveOnFocusEnd,
     })
   }, [
     sessionLength,
@@ -122,15 +152,28 @@ function App() {
     longBreakLength,
     soundEnabled,
     autoStartNext,
+    completeActiveOnFocusEnd,
   ])
 
   useEffect(() => {
-    saveTodos(todos)
-  }, [todos])
+    saveTodos(todoState)
+  }, [todoState])
 
   useEffect(() => {
     savePanels(panels)
   }, [panels])
+
+  useEffect(() => {
+    if (activeId || !isPlaying) setSuppressZen(false)
+  }, [activeId, isPlaying])
+
+  useEffect(() => {
+    if (!isBreakTime || !panels.showRituals) {
+      setBreakRitual(null)
+      return
+    }
+    setBreakRitual(pickBreakRitual(resolveTimerPhase(true, isLongBreak)))
+  }, [isBreakTime, isLongBreak, panels.showRituals])
 
   useEffect(() => {
     if (!isPlayingRef.current) {
@@ -168,6 +211,39 @@ function App() {
     }
   }, [])
 
+  const playTimerRef = useRef(() => {})
+  const resetTimerRef = useRef(() => {})
+
+  useEffect(() => {
+    const isTypingTarget = (target) => {
+      if (!(target instanceof HTMLElement)) return false
+      if (target.isContentEditable) return true
+      const tag = target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+      return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'))
+    }
+
+    const onKeyDown = (event) => {
+      if (settingsOpen) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (isTypingTarget(event.target)) return
+
+      if (event.key === ' ' || event.code === 'Space') {
+        event.preventDefault()
+        playTimerRef.current()
+        return
+      }
+
+      if (event.key === 'r' || event.key === 'R') {
+        event.preventDefault()
+        resetTimerRef.current()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [settingsOpen])
+
   const remainingFromDeadline = () => {
     if (!deadlineRef.current) return timeleftRef.current
     return Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000))
@@ -192,13 +268,18 @@ function App() {
 
   const recordFocusComplete = (focusSeconds, cycleFilled) => {
     setStats((prev) => {
-      const next = {
-        completedFocus: prev.completedFocus + 1,
-        totalFocusSeconds: prev.totalFocusSeconds + focusSeconds,
-        cycleFilled,
-      }
+      const next = applyFocusComplete(prev, focusSeconds, cycleFilled)
       saveStats(next)
       return next
+    })
+
+    if (!completeActiveOnFocusEndRef.current || !activeIdRef.current) return
+    const doneId = activeIdRef.current
+    setTodoState((prev) => {
+      const items = prev.items.map((todo) =>
+        todo.id === doneId ? { ...todo, done: true } : todo,
+      )
+      return { items, activeId: null }
     })
   }
 
@@ -279,6 +360,10 @@ function App() {
     setPanels((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
+  const toggleZenMode = () => {
+    setPanels((prev) => ({ ...prev, zenMode: !prev.zenMode }))
+  }
+
   const playTimer = () => {
     if (!isPlaying) {
       isPlayingRef.current = true
@@ -321,17 +406,105 @@ function App() {
     }
   }
 
+  playTimerRef.current = playTimer
+  resetTimerRef.current = resetTimer
+
   const modeLabel = modeTitle(isBreakTime, isLongBreak)
-  const sessionLabel =
-    stats.completedFocus === 1
-      ? '1 session'
-      : `${stats.completedFocus} sessions`
+  const timerPhase = resolveTimerPhase(isBreakTime, isLongBreak)
+  const streakDays = resolveStreakDays(stats)
+  const streakLabel = formatStreakLabel(streakDays)
+  const cycleHint = formatCycleHint(stats.cycleFilled)
+  const activeTodo = getActiveTodo(todos, activeId)
+
+  const setTodos = (nextItems) => {
+    setTodoState((prev) => {
+      const items =
+        typeof nextItems === 'function' ? nextItems(prev.items) : nextItems
+      const nextActive =
+        prev.activeId && items.some((t) => t.id === prev.activeId && !t.done)
+          ? prev.activeId
+          : null
+      return { items, activeId: nextActive }
+    })
+  }
+
+  const setActiveId = (id) => {
+    setTodoState((prev) => ({ ...prev, activeId: id }))
+  }
+
+  const focusIntentionInput = () => {
+    setPanels((prev) => ({ ...prev, zenMode: false, showTodos: true }))
+    setSuppressZen(true)
+    window.setTimeout(() => {
+      document.getElementById('todos-panel')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+      document.getElementById('todo-input')?.focus()
+    }, 50)
+  }
+
+  const statusContent = (() => {
+    if (isBreakTime) {
+      return { kind: 'static', mode: modeLabel, intention: breakRitual }
+    }
+    if (activeTodo) {
+      return { kind: 'static', mode: 'Focus', intention: activeTodo.text }
+    }
+    return {
+      kind: 'pick',
+      mode: 'Focus',
+      intention: 'Choisis une intention',
+    }
+  })()
+
+  const visible = resolvePanelVisibility(panels, { isPlaying, suppressZen })
+
+  const statusInner = (
+    <>
+      <span className="status-dot" aria-hidden="true" />
+      <span className="timer-status-text">
+        <span className="timer-status-mode">{statusContent.mode}</span>
+        {statusContent.intention ? (
+          <>
+            <span className="timer-status-sep" aria-hidden="true">
+              ·
+            </span>
+            <span
+              className={`timer-status-intention${
+                statusContent.kind === 'pick' ? ' is-placeholder' : ''
+              }`}
+            >
+              {statusContent.intention}
+            </span>
+          </>
+        ) : null}
+      </span>
+    </>
+  )
 
   return (
-    <div className="app-shell" id="app">
+    <div
+      className={`app-shell${visible.zenActive ? ' is-zen' : ''}`}
+      id="app"
+    >
       <header className="app-header">
         <h1 className="brand">takku</h1>
         <div className="header-actions">
+          <button
+            type="button"
+            className={`zen-btn${panels.zenMode ? ' is-on' : ''}`}
+            onClick={toggleZenMode}
+            aria-pressed={panels.zenMode}
+            aria-label={
+              panels.zenMode ? 'Quitter le mode zen' : 'Activer le mode zen'
+            }
+            title={
+              panels.zenMode ? 'Quitter le mode zen' : 'Mode zen'
+            }
+          >
+            Zen
+          </button>
           <button
             type="button"
             className="icon-btn"
@@ -368,28 +541,42 @@ function App() {
       <audio src={beep} controls={false} id="beep" ref={audioRef} />
 
       <section className="hero">
-        {panels.showQuotes ? <QuoteRotator /> : null}
+        <Reveal show={visible.showQuotes} className="reveal-quote">
+          <QuoteRotator timerPhase={timerPhase} />
+        </Reveal>
 
         <div className="timer-card" id="timer">
-          <h2
-            id="timer-label"
-            className={`timer-status${isPlaying ? ' is-active' : ''}`}
-          >
-            <span className="status-dot" aria-hidden="true" />
-            {modeLabel}
-          </h2>
+          {statusContent.kind === 'pick' ? (
+            <button
+              type="button"
+              id="timer-label"
+              className={`timer-status is-action${isPlaying ? ' is-active' : ''}`}
+              onClick={focusIntentionInput}
+            >
+              {statusInner}
+            </button>
+          ) : (
+            <h2
+              id="timer-label"
+              className={`timer-status${isPlaying ? ' is-active' : ''}`}
+            >
+              {statusInner}
+            </h2>
+          )}
           <p id="time-left" className="time-left" aria-live="polite">
             {formatTime(timeleft)}
           </p>
-          <DurationsInline
-            isPlaying={isPlaying}
-            sessionLength={sessionLength}
-            breakLength={breakLength}
-            longBreakLength={longBreakLength}
-            setSessionLength={setSessionLength}
-            setBreakLength={setBreakLength}
-            setLongBreakLength={setLongBreakLength}
-          />
+          <Reveal show={visible.showDurations} className="reveal-durations">
+            <DurationsInline
+              isPlaying={isPlaying}
+              sessionLength={sessionLength}
+              breakLength={breakLength}
+              longBreakLength={longBreakLength}
+              setSessionLength={setSessionLength}
+              setBreakLength={setBreakLength}
+              setLongBreakLength={setLongBreakLength}
+            />
+          </Reveal>
         </div>
 
         <div className="cta-group">
@@ -399,6 +586,8 @@ function App() {
             id="start_stop"
             onClick={playTimer}
             aria-label={isPlaying ? 'Mettre en pause' : 'Démarrer'}
+            aria-keyshortcuts="Space"
+            title={isPlaying ? 'Pause (Espace)' : 'Start (Espace)'}
           >
             {isPlaying ? (
               <>
@@ -434,6 +623,8 @@ function App() {
             id="reset"
             onClick={resetTimer}
             aria-label="Réinitialiser"
+            aria-keyshortcuts="R"
+            title="Réinitialiser (R)"
           >
             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <path
@@ -447,40 +638,60 @@ function App() {
           </button>
         </div>
 
-        {panels.showStats ? (
-          <div className="session-progress">
-            <div
-              id="sessions"
-              className="session-dots"
-              role="img"
-              aria-label={`Cycle : ${stats.cycleFilled} sur ${CYCLE_SIZE}`}
-            >
-              {Array.from({ length: CYCLE_SIZE }, (_, i) => (
-                <span
-                  key={i}
-                  className={`session-dot${i < stats.cycleFilled ? ' is-filled' : ''}`}
-                />
-              ))}
-            </div>
-
-            <p className="flow-stats">
-              {sessionLabel}
-              <span className="flow-stats-sep" aria-hidden="true">
-                ·
-              </span>
-              {formatFocusTotal(stats.totalFocusSeconds)} de focus
-            </p>
-          </div>
-        ) : null}
       </section>
 
-      {panels.showTodos ? (
-        <TodoList todos={todos} onChange={setTodos} />
-      ) : null}
+      <Reveal show={visible.showStats} className="reveal-stats">
+        <div className="session-progress">
+          <div
+            id="sessions"
+            className="session-dots"
+            role="img"
+            aria-label={`Cycle : ${stats.cycleFilled} sur ${CYCLE_SIZE}`}
+          >
+            {Array.from({ length: CYCLE_SIZE }, (_, i) => (
+              <span
+                key={i}
+                className={`session-dot${i < stats.cycleFilled ? ' is-filled' : ''}`}
+              />
+            ))}
+          </div>
+
+          <p className="cycle-hint">{cycleHint}</p>
+
+          <p className="flow-stats">
+            Aujourd&apos;hui
+            <span className="flow-stats-sep" aria-hidden="true">
+              ·
+            </span>
+            {formatSessionCount(stats.todayCompletedFocus)}
+            <span className="flow-stats-sep" aria-hidden="true">
+              ·
+            </span>
+            {formatFocusTotal(stats.todayFocusSeconds)}
+            {streakLabel ? (
+              <>
+                <span className="flow-stats-sep" aria-hidden="true">
+                  ·
+                </span>
+                <span className="flow-streak">{streakLabel}</span>
+              </>
+            ) : null}
+          </p>
+        </div>
+      </Reveal>
+
+      <Reveal show={visible.showTodos} className="reveal-todos">
+        <TodoList
+          todos={todos}
+          activeId={activeId}
+          onChange={setTodos}
+          onSetActive={setActiveId}
+        />
+      </Reveal>
 
       <footer className="app-footer">
-        <p>
-          Made for you 🚀 · © {new Date().getFullYear()}{' '}
+        <p className="footer-credit">
+          Made for you 🚀 © {new Date().getFullYear()}{' '}
           <a
             href="https://akhmad.ninja"
             target="_blank"
@@ -502,6 +713,10 @@ function App() {
         onToggleSound={() => setSoundEnabled((prev) => !prev)}
         autoStartNext={autoStartNext}
         onToggleAutoStart={() => setAutoStartNext((prev) => !prev)}
+        completeActiveOnFocusEnd={completeActiveOnFocusEnd}
+        onToggleCompleteActive={() =>
+          setCompleteActiveOnFocusEnd((prev) => !prev)
+        }
       />
     </div>
   )

@@ -1,50 +1,97 @@
 [
   {
     "text": "Petit à petit, l'oiseau fait son nid.",
-    "author": "Proverbe"
+    "author": "Proverbe",
+    "phases": ["focus"]
   },
   {
     "text": "La constance bat le talent quand le talent ne travaille pas.",
-    "author": null
+    "author": null,
+    "phases": ["focus"]
   },
   {
     "text": "Ce n'est pas parce que les choses sont difficiles que nous n'osons pas, c'est parce que nous n'osons pas qu'elles sont difficiles.",
-    "author": "Sénèque"
+    "author": "Sénèque",
+    "phases": ["focus"]
   },
   {
     "text": "Une session à la fois. Respire, avance.",
-    "author": null
+    "author": null,
+    "phases": ["focus"]
   },
   {
     "text": "Le succès, c'est d'aller d'échec en échec sans perdre son enthousiasme.",
-    "author": "Winston Churchill"
-  },
-  {
-    "text": "Qui veut aller loin ménage sa monture.",
-    "author": "Proverbe"
-  },
-  {
-    "text": "Fais de ta vie un rêve, et d'un rêve, une réalité.",
-    "author": "Antoine de Saint-Exupéry"
-  },
-  {
-    "text": "Il n'y a pas de vent favorable pour celui qui ne sait où il va.",
-    "author": "Sénèque"
+    "author": "Winston Churchill",
+    "phases": ["focus"]
   },
   {
     "text": "Commence. Le reste suivra.",
-    "author": null
+    "author": null,
+    "phases": ["focus"]
   },
   {
     "text": "La discipline est le pont entre les objectifs et les accomplissements.",
-    "author": "Jim Rohn"
-  },
-  {
-    "text": "À vaincre sans péril, on triomphe sans gloire.",
-    "author": "Pierre Corneille"
+    "author": "Jim Rohn",
+    "phases": ["focus"]
   },
   {
     "text": "Le mieux est l'ennemi du bien. Avance d'abord.",
-    "author": null
+    "author": null,
+    "phases": ["focus"]
+  },
+  {
+    "text": "Qui veut aller loin ménage sa monture.",
+    "author": "Proverbe",
+    "phases": ["break", "longBreak"]
+  },
+  {
+    "text": "Le repos fait partie du travail.",
+    "author": null,
+    "phases": ["break"]
+  },
+  {
+    "text": "Lâche prise un instant. Tu reviendras plus net.",
+    "author": null,
+    "phases": ["break"]
+  },
+  {
+    "text": "Respire. Le rythme compte autant que l'effort.",
+    "author": null,
+    "phases": ["break"]
+  },
+  {
+    "text": "Une pause courte, une attention plus longue.",
+    "author": null,
+    "phases": ["break"]
+  },
+  {
+    "text": "Il n'y a pas de vent favorable pour celui qui ne sait où il va.",
+    "author": "Sénèque",
+    "phases": ["focus", "longBreak"]
+  },
+  {
+    "text": "À vaincre sans péril, on triomphe sans gloire.",
+    "author": "Pierre Corneille",
+    "phases": ["focus"]
+  },
+  {
+    "text": "Fais de ta vie un rêve, et d'un rêve, une réalité.",
+    "author": "Antoine de Saint-Exupéry",
+    "phases": ["longBreak"]
+  },
+  {
+    "text": "Recharge-toi. La prochaine session t'attendra.",
+    "author": null,
+    "phases": ["longBreak"]
+  },
+  {
+    "text": "Éloigne-toi un moment. La constance se cultive aussi au repos.",
+    "author": null,
+    "phases": ["longBreak"]
+  },
+  {
+    "text": "Quatre sessions, une respiration plus large. Tu as tenu le rythme.",
+    "author": null,
+    "phases": ["longBreak"]
   }
 ]

@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS = {
   longBreakLength: 15,
   soundEnabled: true,
   autoStartNext: true,
+  completeActiveOnFocusEnd: false,
 }
 
 function clampMinutes(value, fallback) {
@@ -44,6 +45,10 @@ export function loadSettings() {
         parsed.autoStartNext,
         DEFAULT_SETTINGS.autoStartNext,
       ),
+      completeActiveOnFocusEnd: asBoolean(
+        parsed.completeActiveOnFocusEnd,
+        DEFAULT_SETTINGS.completeActiveOnFocusEnd,
+      ),
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -69,6 +74,7 @@ export function saveSettings(settings) {
         ),
         soundEnabled: Boolean(settings.soundEnabled),
         autoStartNext: Boolean(settings.autoStartNext),
+        completeActiveOnFocusEnd: Boolean(settings.completeActiveOnFocusEnd),
       }),
     )
   } catch {
