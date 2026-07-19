@@ -7,7 +7,17 @@ export const DEFAULT_SETTINGS = {
   soundEnabled: true,
   autoStartNext: true,
   completeActiveOnFocusEnd: false,
+  prayersEnabled: true,
+  prayerCoords: null,
+  prayerCityLabel: '',
+  prayerMethod: 'MuslimWorldLeague',
 }
+
+const PRAYER_METHODS = new Set([
+  'MuslimWorldLeague',
+  'Egyptian',
+  'MoonsightingCommittee',
+])
 
 function clampMinutes(value, fallback) {
   const n = Number(value)
@@ -19,37 +29,55 @@ function asBoolean(value, fallback) {
   return typeof value === 'boolean' ? value : fallback
 }
 
+function asPrayerCoords(value) {
+  if (!value || typeof value !== 'object') return null
+  const lat = Number(value.lat)
+  const lng = Number(value.lng)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
+  return { lat, lng }
+}
+
+function asPrayerMethod(value) {
+  return PRAYER_METHODS.has(value) ? value : DEFAULT_SETTINGS.prayerMethod
+}
+
+function asCityLabel(value) {
+  return typeof value === 'string' ? value : DEFAULT_SETTINGS.prayerCityLabel
+}
+
+function normalizeSettings(raw) {
+  return {
+    sessionLength: clampMinutes(
+      raw.sessionLength,
+      DEFAULT_SETTINGS.sessionLength,
+    ),
+    breakLength: clampMinutes(raw.breakLength, DEFAULT_SETTINGS.breakLength),
+    longBreakLength: clampMinutes(
+      raw.longBreakLength,
+      DEFAULT_SETTINGS.longBreakLength,
+    ),
+    soundEnabled: asBoolean(raw.soundEnabled, DEFAULT_SETTINGS.soundEnabled),
+    autoStartNext: asBoolean(raw.autoStartNext, DEFAULT_SETTINGS.autoStartNext),
+    completeActiveOnFocusEnd: asBoolean(
+      raw.completeActiveOnFocusEnd,
+      DEFAULT_SETTINGS.completeActiveOnFocusEnd,
+    ),
+    prayersEnabled: asBoolean(
+      raw.prayersEnabled,
+      DEFAULT_SETTINGS.prayersEnabled,
+    ),
+    prayerCoords: asPrayerCoords(raw.prayerCoords),
+    prayerCityLabel: asCityLabel(raw.prayerCityLabel),
+    prayerMethod: asPrayerMethod(raw.prayerMethod),
+  }
+}
+
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { ...DEFAULT_SETTINGS }
-    const parsed = JSON.parse(raw)
-    return {
-      sessionLength: clampMinutes(
-        parsed.sessionLength,
-        DEFAULT_SETTINGS.sessionLength,
-      ),
-      breakLength: clampMinutes(
-        parsed.breakLength,
-        DEFAULT_SETTINGS.breakLength,
-      ),
-      longBreakLength: clampMinutes(
-        parsed.longBreakLength,
-        DEFAULT_SETTINGS.longBreakLength,
-      ),
-      soundEnabled: asBoolean(
-        parsed.soundEnabled,
-        DEFAULT_SETTINGS.soundEnabled,
-      ),
-      autoStartNext: asBoolean(
-        parsed.autoStartNext,
-        DEFAULT_SETTINGS.autoStartNext,
-      ),
-      completeActiveOnFocusEnd: asBoolean(
-        parsed.completeActiveOnFocusEnd,
-        DEFAULT_SETTINGS.completeActiveOnFocusEnd,
-      ),
-    }
+    return normalizeSettings(JSON.parse(raw))
   } catch {
     return { ...DEFAULT_SETTINGS }
   }
@@ -59,23 +87,7 @@ export function saveSettings(settings) {
   try {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({
-        sessionLength: clampMinutes(
-          settings.sessionLength,
-          DEFAULT_SETTINGS.sessionLength,
-        ),
-        breakLength: clampMinutes(
-          settings.breakLength,
-          DEFAULT_SETTINGS.breakLength,
-        ),
-        longBreakLength: clampMinutes(
-          settings.longBreakLength,
-          DEFAULT_SETTINGS.longBreakLength,
-        ),
-        soundEnabled: Boolean(settings.soundEnabled),
-        autoStartNext: Boolean(settings.autoStartNext),
-        completeActiveOnFocusEnd: Boolean(settings.completeActiveOnFocusEnd),
-      }),
+      JSON.stringify(normalizeSettings(settings)),
     )
   } catch {
     /* ignore */

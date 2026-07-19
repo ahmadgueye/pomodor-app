@@ -1,0 +1,16 @@
+[
+  { "id": "dakar", "label": "Dakar", "lat": 14.6928, "lng": -17.4467 },
+  { "id": "paris", "label": "Paris", "lat": 48.8566, "lng": 2.3522 },
+  { "id": "london", "label": "Londres", "lat": 51.5074, "lng": -0.1278 },
+  { "id": "brussels", "label": "Bruxelles", "lat": 50.8503, "lng": 4.3517 },
+  { "id": "montreal", "label": "Montréal", "lat": 45.5017, "lng": -73.5673 },
+  { "id": "mecca", "label": "La Mecque", "lat": 21.4225, "lng": 39.8262 },
+  { "id": "medina", "label": "Médine", "lat": 24.4672, "lng": 39.6024 },
+  { "id": "casablanca", "label": "Casablanca", "lat": 33.5731, "lng": -7.5898 },
+  { "id": "istanbul", "label": "Istanbul", "lat": 41.0082, "lng": 28.9784 },
+  { "id": "dubai", "label": "Dubaï", "lat": 25.2048, "lng": 55.2708 },
+  { "id": "cairo", "label": "Le Caire", "lat": 30.0444, "lng": 31.2357 },
+  { "id": "jakarta", "label": "Jakarta", "lat": -6.2088, "lng": 106.8456 },
+  { "id": "kualalumpur", "label": "Kuala Lumpur", "lat": 3.139, "lng": 101.6869 },
+  { "id": "newyork", "label": "New York", "lat": 40.7128, "lng": -74.006 }
+]
